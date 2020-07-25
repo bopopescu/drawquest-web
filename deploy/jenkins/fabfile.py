@@ -24,10 +24,10 @@ def all_hosts():
 def group(group_name, limit=None):
     return dns(ec2.get_instances(conn, filters=dict(running, **{'group-name': group_name})))[:limit]
 
-#def redis_master():
+#def redis_main():
 #    return [host for host in group('Redis') if host.split(':')[0] == Config['redis_host']]
 
-#def redis_slaves():
+#def redis_subordinates():
 #    return [host for host in group('Redis') if host.split(':')[0] != Config['redis_host']]
 
 env.user = 'ubuntu'
@@ -41,9 +41,9 @@ env.roledefs.update({
     'nonweb': lambda: set(all_hosts()) - set(group('Web')) - set(group('Testrunner')) - set(group('Drawquest_web')) - set(group('Drawquest_staging_web')) - set(group('Drawquest_testrunner')),
     'pips': lambda: set(group('Web') + group('Drawquest_web') + group('Drawquest_staging_web') + group('Cron') + group('Testrunner') + group('Drawquest_testrunner') + group('Sentry')),
     'production': lambda: set(group('Frontend') + group('Backend') + group('Utility')),
-    'redis_master': [Config['redis_host'] + ':30583'],
-    'drawquest_redis_master': [Config['drawquest_redis_host'] + ':30583'],
-    'redis_slave': [Config['redis_slave'] + ":30583"],
+    'redis_main': [Config['redis_host'] + ':30583'],
+    'drawquest_redis_main': [Config['drawquest_redis_host'] + ':30583'],
+    'redis_subordinate': [Config['redis_subordinate'] + ":30583"],
 })
 
 @roles('all')
@@ -51,7 +51,7 @@ def whoami():
     with cd('/var/canvas/website'):
         run('whoami')
 
-def update(commit, branch='master'):
+def update(commit, branch='main'):
     with cd('/var/canvas/'):
         run('git checkout {}'.format(branch))
         run('git pull origin {} -q'.format(branch))
@@ -149,33 +149,33 @@ def cloudwatch_metric(name, command, unit="Kilobytes"):
     with cd('/var/canvas/common'):
         run('python /var/canvas/deploy/ec2/put_metric %s %s %s' % (name, unit, pipes.quote(command)))
 
-@roles('redis_master')
-def update_redis_slave_sync_ts():
-    run('redis-cli set redis_slave_sync_ts "`date +%s`"')
+@roles('redis_main')
+def update_redis_subordinate_sync_ts():
+    run('redis-cli set redis_subordinate_sync_ts "`date +%s`"')
 
-@roles('redis_slave')
-def check_redis_slave_sync_ts(timeout=120):
+@roles('redis_subordinate')
+def check_redis_subordinate_sync_ts(timeout=120):
     timeout = float(timeout)
 
     with settings(warn_only=True):
-        slave_of = run('redis-cli info | grep "master_host:"').strip().split(':')[-1]
+        subordinate_of = run('redis-cli info | grep "main_host:"').strip().split(':')[-1]
 
-    if slave_of != Config['redis_host']:
-        raise Exception("Redis slave is not syncing with the redis master.")
+    if subordinate_of != Config['redis_host']:
+        raise Exception("Redis subordinate is not syncing with the redis main.")
 
     try:
-        ts = float(run('redis-cli get redis_slave_sync_ts').replace('"', ''))
+        ts = float(run('redis-cli get redis_subordinate_sync_ts').replace('"', ''))
     except ValueError:
-        raise Exception('No redis_slave_sync_ts key found, or invalid value.')
+        raise Exception('No redis_subordinate_sync_ts key found, or invalid value.')
 
     now = time.time()
     print 'Time now:', now
 
     if now < ts:
-        raise Exception('Redis slave sync timestamp is somehow in the future.')
+        raise Exception('Redis subordinate sync timestamp is somehow in the future.')
 
     if now - ts > timeout:
-        raise Exception('Redis slave is out of sync, as of {0} seconds ago: {1}'.format(int(ts - time.time()),
+        raise Exception('Redis subordinate is out of sync, as of {0} seconds ago: {1}'.format(int(ts - time.time()),
                                                                                         env.host))
 
 def rethumbnail(settings='settings'):
@@ -202,7 +202,7 @@ def rethumbnail(settings='settings'):
 def _backup_redis(project_name):
     with cd('/var/redis'):
         date_string = datetime.now().strftime('%Y-%m-%d')
-        fname = '/mnt/{}-redis-master-{}.tgz'.format(project_name, date_string)
+        fname = '/mnt/{}-redis-main-{}.tgz'.format(project_name, date_string)
         copy_fname = '/mnt/dump-{}.rdb'.format(date_string)
         sudo('cp dump.rdb {}'.format(copy_fname))
         sudo('tar czf {} {}'.format(fname, copy_fname))
@@ -210,11 +210,11 @@ def _backup_redis(project_name):
         sudo('rm {}'.format(fname))
         sudo('rm {}'.format(copy_fname))
 
-@roles('redis_master')
+@roles('redis_main')
 def backup_canvas_redis():
     _backup_redis('canvas')
 
-@roles('drawquest_redis_master')
+@roles('drawquest_redis_main')
 def backup_drawquest_redis():
     _backup_redis('drawquest')
 

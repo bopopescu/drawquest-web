@@ -58,9 +58,9 @@ Config = {
     'fact_host': '%s:9999' % ('ip-10-12-99-188.ec2.internal' if PRODUCTION else '127.0.0.1'),
     'drawquest_fact_host': '%s:9999' % ('ip-10-34-102-100.ec2.internal' if PRODUCTION else '127.0.0.1'),
 
-    # Master.
+    # Main.
     'redis_host': 'ip-10-84-89-110.ec2.internal' if PRODUCTION else 'localhost',
-    'redis_slave': 'ip-10-218-7-231.ec2.internal' if PRODUCTION else None,
+    'redis_subordinate': 'ip-10-218-7-231.ec2.internal' if PRODUCTION else None,
 
     'memcache_hosts': ['cache_0.example.com:11211', 'cache_1.example.com:11211'] if PRODUCTION else ['127.0.0.1:11211'],
 
@@ -73,7 +73,7 @@ Config = {
 if PRODUCTION:
     Config.update({
         'drawquest_redis_host': 'ip-10-185-45-177.ec2.internal', # Massive Blow of Virture # old: Colossal Ring of Lucifer.
-        'drawquest_redis_slave': 'ip-10-185-195-229.ec2.internal', # Famous Sling of Belar  #old: 'ip-10-166-20-27.ec2.internal', # Fierce Whip of Fire.
+        'drawquest_redis_subordinate': 'ip-10-185-195-229.ec2.internal', # Famous Sling of Belar  #old: 'ip-10-166-20-27.ec2.internal', # Fierce Whip of Fire.
         # old one that ran out of memory: 'drawquest_redis_host': 'ip-10-78-26-92.ec2.internal',
         'drawquest_memcache_hosts': [
             'cache_0.example.com:11211',
@@ -87,7 +87,7 @@ if PRODUCTION:
 elif STAGING:
     Config.update({
         'drawquest_redis_host': 'ip-10-32-151-250.ec2.internal',
-        'drawquest_redis_slave': 'ip-10-80-227-217.ec2.internal',
+        'drawquest_redis_subordinate': 'ip-10-80-227-217.ec2.internal',
         'drawquest_memcache_hosts': ['drawquest-staging.uifpjv.cfg.use1.cache.amazonaws.com:11211'],
         'drawquest_image_fs': ('s3', 'drawquest_staging_ugc'),
         'drawquest_playback_fs': ('s3', 'drawquest-staging-playbacks'),
@@ -95,7 +95,7 @@ elif STAGING:
 else:
     Config.update({
         'drawquest_redis_host': 'localhost',
-        'drawquest_redis_slave': None,
+        'drawquest_redis_subordinate': None,
         'drawquest_memcache_hosts': ['127.0.0.1:11212'],
         'drawquest_image_fs': ('local', '/var/canvas/website/drawquest/ugc'),
         'drawquest_playback_fs': ('local', '/var/canvas/website/drawquest/ugc/playbacks'),
@@ -103,7 +103,7 @@ else:
 
 _load_config = lambda path: Config.update(json.load(open(path)))
 
-assert Config['redis_host'] != Config['redis_slave'], 'sanity check, you probably forgot to update the standby!'
+assert Config['redis_host'] != Config['redis_subordinate'], 'sanity check, you probably forgot to update the standby!'
 
 # Load the AWS credentials for the box.
 if os.path.exists(AWS_CREDENTIALS_PATH):

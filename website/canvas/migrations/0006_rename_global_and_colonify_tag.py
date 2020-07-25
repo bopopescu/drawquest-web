@@ -12,7 +12,7 @@ class Migration(DataMigration):
         try:
             redis.rename('recent_threads', 'global:recent')
         except:
-            print 'unable to rename master'
+            print 'unable to rename main'
 
         for tag in orm.Hashtag.objects.all():
             orig = 'canvas:%s' % tag.name

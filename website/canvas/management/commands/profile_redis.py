@@ -12,8 +12,8 @@ class Command(BaseCommand):
     help = "Profile redis based on random key sampling. Override host with localhost for local testing."
 
     def handle(self, sample='10000', host='ip-10-203-46-218.ec2.internal', *args, **options):
-        slave_redis = CanvasRedis(host=host, port=settings.REDIS_PORT, db=settings.REDIS_DB_MAIN)
-        slave_cache = CanvasRedis(host=host, port=settings.REDIS_PORT, db=settings.REDIS_DB_CACHE)
+        subordinate_redis = CanvasRedis(host=host, port=settings.REDIS_PORT, db=settings.REDIS_DB_MAIN)
+        subordinate_cache = CanvasRedis(host=host, port=settings.REDIS_PORT, db=settings.REDIS_DB_CACHE)
         
         if sample != "*":
             sample = int(sample)
@@ -22,7 +22,7 @@ class Command(BaseCommand):
             # Multiply size * 3 to roughly account for the difference in RDB vs in-memory size.
             return "%.1f MB" % (size * 3 / 1000000.0)
 
-        for client in (slave_redis, slave_cache):
+        for client in (subordinate_redis, subordinate_cache):
             dbsize = client.dbsize()
             if sample == "*":
                 print "Summarizing total memory usage for db %s" % client.connection.db

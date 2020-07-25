@@ -6,16 +6,16 @@ from django.core.management.base import BaseCommand, CommandError
 
 from canvas.models import Metrics
 
-def ping_puppetmaster():
+def ping_puppetmain():
     headers = {'Accept': 'yaml'}
-    request = urllib2.Request('https://puppetmaster.internal.example.com:8140/production/certificate/ca', headers=headers)
+    request = urllib2.Request('https://puppetmain.internal.example.com:8140/production/certificate/ca', headers=headers)
     try:
         urllib2.urlopen(request, timeout=2).read()
     except urllib2.URLError:
-        print "Puppetmaster not responding."
+        print "Puppetmain not responding."
         return False
     else:
-        print "Puppetmaster healthy."
+        print "Puppetmain healthy."
         return True
 
 class Command(BaseCommand):
@@ -68,7 +68,7 @@ class Command(BaseCommand):
 
         RETRIES = 6
         for n in range(1, RETRIES+1):
-            if ping_puppetmaster():
+            if ping_puppetmain():
                 break
             elif n != RETRIES:
                 print "Retrying..."
